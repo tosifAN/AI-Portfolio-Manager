@@ -26,4 +26,4 @@ st.markdown("""
 st.markdown('<div class="centered-title">AI Portfolio Manager</div>', unsafe_allow_html=True)
 
 # Display centered message
-st.markdown('<div class="centered-text">Migrating from Streamlit to ReactJS to handle the I/O voice efficiently</div>', unsafe_allow_html=True)
+st.markdown('<div class="centered-text">(Updating the link under 2 hour) Migrating from Streamlit to ReactJS to handle the I/O voice efficiently</div>', unsafe_allow_html=True)
