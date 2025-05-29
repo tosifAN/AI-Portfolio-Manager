@@ -189,7 +189,7 @@ class FinancialDataAPI:
                     # recent_earnings = earnings[earnings.index >= recent_date]
                     
                     for date, row in recent_earnings.iterrows():
-                        surprise_pct = None
+                        surprise_pct = 0
                         if row.get('EPS Estimate') and row.get('Reported EPS'):
                             if row['EPS Estimate'] != 0:
                                 surprise_pct = ((row['Reported EPS'] - row['EPS Estimate']) / abs(row['EPS Estimate'])) * 100

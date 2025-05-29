@@ -354,7 +354,7 @@ st.sidebar.title("Options")
 voice_output = st.sidebar.checkbox("Enable Voice Output", value=True)
 
 # Tabs for different functions
-tab1, tab2 = st.tabs(["Morning Market Brief", "Ask a Question"])
+tab1, tab2,tab3 = st.tabs(["Morning Market Brief", "Ask a Question", "Investor Story"])
 
 # Morning Market Brief tab
 with tab1:
@@ -498,6 +498,81 @@ with tab2:
                         'answer': response['answer'],
                         'audio_url': response.get('audio_url')
                     })
+
+
+# Investor Story tab
+with tab3:
+    st.header("Meet Ms. Anya Sharma")
+    st.write("A seasoned investor with a keen eye on emerging markets, particularly the Asia tech sector.")
+
+    st.subheader("Anya's Portfolio Snapshot")
+
+    # Hardcoded portfolio data from api_agent
+    anya_portfolio_data = {
+        'total_aum': 1000000,
+        'asia_tech_allocation': 220000,
+        'previous_asia_tech_allocation': 180000,
+        'holdings': [
+            {'symbol': 'TSM', 'name': 'Taiwan Semiconductor', 'value': 50000},
+            {'symbol': 'BABA', 'name': 'Alibaba', 'value': 40000},
+            {'symbol': '005930.KS', 'name': 'Samsung Electronics', 'value': 35000},
+            {'symbol': 'BIDU', 'name': 'Baidu', 'value': 30000},
+            {'symbol': 'JD', 'name': 'JD.com', 'value': 25000},
+            {'symbol': 'PDD', 'name': 'PDD Holdings', 'value': 40000}
+        ]
+    }
+
+    # Calculate metrics for display
+    total_aum = anya_portfolio_data.get('total_aum', 0)
+    current_allocation = anya_portfolio_data.get('asia_tech_allocation', 0)
+    previous_allocation = anya_portfolio_data.get('previous_asia_tech_allocation', 0)
+
+    current_allocation_pct = (current_allocation / total_aum) * 100 if total_aum else 0
+    previous_allocation_pct = (previous_allocation / total_aum) * 100 if total_aum else 0
+    allocation_change_pct = current_allocation_pct - previous_allocation_pct
+
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.metric(
+            "Asia Tech Allocation",
+            f"{current_allocation_pct:.1f}%",
+            f"{allocation_change_pct:+.1f}%"
+        )
+    with col2:
+        st.metric(
+            "Total AUM",
+            f"${total_aum:,.0f}"
+        )
+    with col3:
+        st.metric(
+            "Asia Tech Value",
+            f"${current_allocation:,.0f}"
+        )
+
+    st.subheader("Holdings Detail")
+    holdings_df = pd.DataFrame(anya_portfolio_data['holdings'])
+
+    if not holdings_df.empty:
+        # Calculate allocation percentage for each holding
+        holdings_df['allocation_pct'] = (holdings_df['value'] / current_allocation) * 100 if current_allocation else 0
+
+        # Format columns
+        if 'value' in holdings_df.columns:
+            holdings_df['value'] = holdings_df['value'].apply(lambda x: f"${x:,.0f}")
+        if 'allocation_pct' in holdings_df.columns:
+            holdings_df['allocation_pct'] = holdings_df['allocation_pct'].apply(lambda x: f"{x:.1f}%")
+
+        # Select and reorder columns for display
+        display_cols = ['symbol', 'name', 'value', 'allocation_pct']
+        holdings_df = holdings_df[display_cols]
+
+        st.dataframe(holdings_df, hide_index=True)
+
+    st.write("""
+    Anya's strategic move to increase her exposure reflects her strong conviction in the sector's future performance.
+    She actively monitors these positions, relying on timely data to inform her next strategic decisions in the fast-paced Asia tech landscape.
+    """)
+
 
 # Display interaction history in sidebar
 st.sidebar.header("Interaction History")

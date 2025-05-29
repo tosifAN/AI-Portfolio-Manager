@@ -35,7 +35,8 @@ class ScrapingAgent:
             List of dictionaries with news data
         """
         if keywords is None:
-            keywords = ['Asia tech', 'semiconductor', 'TSMC', 'Samsung', 'Alibaba']
+            #keywords depends on portfolio
+            keywords = ['Asia tech', 'semiconductor', 'TSMC', 'Samsung', 'Alibaba', 'BABA', 'Taiwan Semiconductor', '005930.KS', 'Samsung Electronics','BIDU', 'Baidu', 'JD', 'JD.com', 'PDD', 'PDD Holdings']
         
         news_sources = [
             {
@@ -65,7 +66,7 @@ class ScrapingAgent:
                     soup = BeautifulSoup(response.text, 'html.parser')
                     articles = soup.select(source['article_selector'])
                     
-                    for article in articles[:10]:  # Limit to 10 articles per source
+                    for article in articles[:5]:  # Limit to 5 articles per source
                         try:
                             title_elem = article.select_one(source['title_selector'])
                             link_elem = article.select_one(source['link_selector'])

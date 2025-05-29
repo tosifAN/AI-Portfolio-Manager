@@ -2,48 +2,72 @@ import os
 import numpy as np
 from typing import List, Dict, Any, Optional
 from crewai import Agent, Task
-from langchain.vectorstores import FAISS
+# Import Pinecone and Langchain's Pinecone integration
+from pinecone import Pinecone, Index
+from langchain_pinecone import PineconeVectorStore
 from langchain.embeddings.openai import OpenAIEmbeddings
 from langchain.schema import Document
 from langchain.text_splitter import RecursiveCharacterTextSplitter
+import math
 
 class RetrieverAgent:
     """Agent for indexing and retrieving information from a vector store."""
     
-    def __init__(self, vector_store_path: str = None, openai_api_key: str = None):
-        """Initialize the retriever agent.
+    def __init__(self, pinecone_api_key: str = None, pinecone_environment: str = None, pinecone_index_name: str = None, openai_api_key: str = None):
+        """Initialize the retriever agent with Pinecone.
         
         Args:
-            vector_store_path: Path to store the FAISS index
+            pinecone_api_key: Pinecone API key
+            pinecone_environment: Pinecone environment (e.g., 'gcp-starter')
+            pinecone_index_name: Name of the Pinecone index
             openai_api_key: OpenAI API key for embeddings
         """
-        self.vector_store_path = vector_store_path or os.getenv('VECTOR_STORE_PATH', './vector_store')
         self.openai_api_key = openai_api_key or os.getenv('OPENAI_API_KEY')
+        self.pinecone_api_key = pinecone_api_key or os.getenv('PINECONE_API_KEY')
+        self.pinecone_environment = pinecone_environment or os.getenv('PINECONE_ENVIRONMENT')
+        self.pinecone_index_name = pinecone_index_name or os.getenv('PINECONE_INDEX_NAME')
+
+        if not self.pinecone_api_key or not self.pinecone_environment or not self.pinecone_index_name or not self.openai_api_key:
+            raise ValueError("Pinecone API key, environment, index name, and OpenAI API key must be provided or set as environment variables.")
+
+        # Initialize Pinecone client
+        self.pinecone_client = Pinecone(api_key=self.pinecone_api_key, environment=self.pinecone_environment)
+
+        # Check if index exists, create if not (optional, can be done manually)
+        # For simplicity, we'll rely on Langchain's PineconeVectorStore to handle index existence
+        
         self.embeddings = OpenAIEmbeddings(openai_api_key=self.openai_api_key)
         self.text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
         
-        # Create vector store directory if it doesn't exist
-        os.makedirs(self.vector_store_path, exist_ok=True)
-        
+        # Initialize the Pinecone vector store instance
+        # Langchain's PineconeVectorStore handles connection and index reference
+        self.vector_store = PineconeVectorStore(
+            index_name=self.pinecone_index_name, 
+            embedding=self.embeddings,
+            pinecone_api_key=self.pinecone_api_key
+            #environment=self.pinecone_environment
+        )
+
     def create_agent(self) -> Agent:
         """Create a CrewAI agent for retrieval operations."""
         return Agent(
             role="Financial Information Retrieval Specialist",
-            goal="Efficiently index and retrieve relevant financial information",
+            goal="Efficiently index and retrieve relevant financial information from Pinecone",
             backstory="""You are an expert in information retrieval systems with a 
-            specialization in financial data. Your expertise lies in organizing, indexing, 
-            and retrieving the most relevant information from large datasets to answer 
-            specific financial queries.""",
+            specialization in financial data, utilizing the power of Pinecone vector 
+            database. Your expertise lies in organizing, indexing, and retrieving the 
+            most relevant information from large datasets to answer specific financial 
+            queries.""",
             verbose=True,
             allow_delegation=False
         )
     
     def index_documents(self, documents: List[Dict[str, str]], namespace: str = 'default') -> bool:
-        """Index documents in the vector store.
+        """Index documents in the Pinecone vector store.
         
         Args:
             documents: List of documents to index (each with 'content' and 'metadata' keys)
-            namespace: Namespace for the documents
+            namespace: Namespace for the documents in Pinecone
             
         Returns:
             Boolean indicating success
@@ -54,29 +78,24 @@ class RetrieverAgent:
             
             # Split documents into chunks
             splits = self.text_splitter.split_documents(doc_objects)
+
+            print(f"this is splists ${splits}")
+            print(f"this is namespace ${namespace}")
             
-            # Create or update the vector store
-            vector_store_path = os.path.join(self.vector_store_path, namespace)
+            # Add documents to the Pinecone index within the specified namespace
+            # Langchain's add_documents handles batching and upserting
+
+
             
-            # Check if the vector store already exists
-            if os.path.exists(vector_store_path):
-                # Load existing vector store and add documents
-                vector_store = FAISS.load_local(vector_store_path, self.embeddings)
-                vector_store.add_documents(splits)
-            else:
-                # Create new vector store
-                vector_store = FAISS.from_documents(splits, self.embeddings)
-            
-            # Save the vector store
-            vector_store.save_local(vector_store_path)
+            self.vector_store.add_documents(splits, namespace=namespace)
             
             return True
         except Exception as e:
-            print(f"Error indexing documents: {e}")
+            print(f"Error indexing documents in Pinecone: {e}")
             return False
     
     def retrieve(self, query: str, namespace: str = 'default', k: int = 5) -> List[Dict[str, Any]]:
-        """Retrieve documents from the vector store.
+        """Retrieve documents from the Pinecone vector store.
         
         Args:
             query: Query string
@@ -87,18 +106,9 @@ class RetrieverAgent:
             List of retrieved documents with content, metadata, and similarity score
         """
         try:
-            vector_store_path = os.path.join(self.vector_store_path, namespace)
-            
-            # Check if the vector store exists
-            if not os.path.exists(vector_store_path):
-                print(f"Vector store not found at {vector_store_path}")
-                return []
-            
-            # Load the vector store
-            vector_store = FAISS.load_local(vector_store_path, self.embeddings)
-            
-            # Retrieve documents
-            docs_with_scores = vector_store.similarity_search_with_score(query, k=k)
+            # Retrieve documents from Pinecone using similarity search
+            # Pinecone typically uses cosine similarity, where higher score is better (max 1.0)
+            docs_with_scores = self.vector_store.similarity_search_with_score(query, k=k, namespace=namespace)
             
             # Format results
             results = []
@@ -112,22 +122,21 @@ class RetrieverAgent:
             
             return results
         except Exception as e:
-            print(f"Error retrieving documents: {e}")
+            print(f"Error retrieving documents from Pinecone: {e}")
             return []
     
     def _score_to_confidence(self, score: float) -> float:
-        """Convert similarity score to confidence percentage.
+        """Convert similarity score (cosine similarity, 0-1) to confidence percentage.
         
         Args:
-            score: Similarity score from FAISS
+            score: Similarity score from Pinecone (typically 0 to 1 for cosine)
             
         Returns:
             Confidence percentage (0-100)
         """
-        # FAISS returns L2 distance, so smaller is better
-        # Convert to a confidence score where higher is better
-        # This is a simple conversion and might need tuning
-        confidence = max(0, min(100, 100 * (1 - score / 10)))
+        # Assuming cosine similarity where 1 is perfect match, 0 is no similarity
+        # Scale the score from [0, 1] to [0, 100]
+        confidence = max(0, min(100, score * 100))
         return confidence
     
     def index_financial_data(self, data: List[Dict[str, Any]], data_type: str) -> bool:
@@ -154,21 +163,27 @@ class RetrieverAgent:
                 }
             elif data_type == 'earnings':
                 # Format earnings data
-                content = f"Company: {item.get('name', item.get('symbol', ''))}\n\nSymbol: {item.get('symbol', '')}\n\nEPS Estimate: {item.get('eps_estimate', '')}\n\nReported EPS: {item.get('reported_eps', '')}\n\nSurprise: {item.get('surprise_pct', '')}%"
+                surprise_pct = item.get('surprise_pct', 0.0)
+                if math.isnan(surprise_pct):
+                    surprise_pct = 0.0  # Replace NaN with 0.0 or another default value
+                content = f"Company: {item.get('name', item.get('symbol', ''))}\n\nSymbol: {item.get('symbol', '')}\n\nEPS Estimate: {item.get('eps_estimate', '')}\n\nReported EPS: {item.get('reported_eps', '')}\n\nSurprise: {surprise_pct}%"
                 metadata = {
                     'type': 'earnings',
                     'symbol': item.get('symbol', ''),
                     'date': item.get('date', ''),
-                    'surprise_pct': item.get('surprise_pct', None)
+                    'surprise_pct': float(surprise_pct)
                 }
             elif data_type == 'stock_data':
                 # Format stock data
-                content = f"Company: {item.get('name', item.get('symbol', ''))}\n\nSymbol: {item.get('symbol', '')}\n\nPrice: {item.get('price', '')}\n\nChange: {item.get('change_pct', '')}%\n\nVolume: {item.get('volume', '')}\n\nMarket Cap: {item.get('market_cap', '')}"
+                change_pct = item.get('change_pct', 0.0)
+                if math.isnan(change_pct):
+                    change_pct = 0.0  # Replace NaN with 0.0 or another default value
+                content = f"Company: {item.get('name', item.get('symbol', ''))}\n\nSymbol: {item.get('symbol', '')}\n\nPrice: {item.get('price', '')}\n\nChange: {change_pct}%\n\nVolume: {item.get('volume', '')}\n\nMarket Cap: {item.get('market_cap', '')}"
                 metadata = {
                     'type': 'stock_data',
                     'symbol': item.get('symbol', ''),
                     'country': item.get('country', ''),
-                    'change_pct': item.get('change_pct', None)
+                    'change_pct': float(change_pct)
                 }
             elif data_type == 'sentiment':
                 # Format sentiment data

@@ -1,4 +1,5 @@
 alpha-vantage
+langchain-pinecone
 
 gTTS
 pydub
@@ -27,7 +28,7 @@ crewai==0.121.0
 
 # Vector stores
 faiss-cpu==1.11.0
-pinecone==7.0.1
+pinecone==7.0.2
 
 # Embedding models
 openai==1.75.0
