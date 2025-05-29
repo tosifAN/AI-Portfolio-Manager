@@ -205,7 +205,7 @@ class RetrieverAgent:
         
         return self.index_documents(documents, namespace=data_type)
     
-    def retrieve_asia_tech_info(self, query: str, confidence_threshold: float = 70.0) -> Dict[str, Any]:
+    def retrieve_asia_tech_info(self, query: str, confidence_threshold: float = 60.0) -> Dict[str, Any]:
         """Retrieve information about Asia tech stocks.
         
         Args:
@@ -216,7 +216,7 @@ class RetrieverAgent:
             Dictionary with retrieved information and confidence scores
         """
         # Namespaces to search in
-        namespaces = ['news', 'earnings', 'stock_data', 'sentiment']
+        namespaces = ['news', 'earnings', 'stock_data', 'sentiment', 'portfolio', 'finance']
         
         all_results = []
         confidence_levels = []

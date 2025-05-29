@@ -172,7 +172,7 @@ async def answer_query(query: TextQuery, voice_output: bool = Query(True)):
         
         # Check confidence level
         if retrieved_info['below_threshold']:
-            answer = f"I'm not confident in my answer (confidence: {retrieved_info['avg_confidence']:.1f}%). Could you please clarify your question about Asia tech stocks?"
+            answer = f"I'm not confident in my answer (confidence: {retrieved_info['avg_confidence']:.1f}%). Could you please clarify your question?"
             confidence = retrieved_info['avg_confidence']
         else:
             # Generate answer
@@ -216,6 +216,7 @@ async def process_voice_query(file: UploadFile = File(...), voice_output: bool =
         
         # Transcribe the audio
         query_text, transcription = voice_agent.process_voice_query(audio_file)
+        print(f"this is audio to text that user have gave ${query_text}")
         
         if not transcription['success']:
             raise HTTPException(status_code=400, detail="Failed to transcribe audio")

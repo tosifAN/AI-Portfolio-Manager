@@ -53,8 +53,19 @@ class VoiceAgent:
             Dictionary with transcription results
         """
         try:
+            print("you are under voice agent transcribe_audio fucntion ")
+
             # Transcribe audio
             result = self.model.transcribe(audio_file)
+            print(f"this is audio file path ${audio_file}")
+
+            audio_file = os.path.abspath(audio_file)
+
+            if not os.path.exists(audio_file):
+                logger.error(f"File not found: {audio_file}")
+                raise FileNotFoundError(f"The audio file does not exist at path: {audio_file}")
+            print(f"this is audio file path ${audio_file}")
+            print(f"this is the result ahahha : ${result}")
             
             return {
                 'text': result['text'],
